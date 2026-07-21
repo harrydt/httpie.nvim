@@ -11,7 +11,7 @@ A Neovim plugin for [HTTPie](https://httpie.io/cli) — run HTTP requests, manag
 
 ```lua
 -- lazy.nvim
-{ dir = "~/code/httpie.nvim", config = function()
+{ "harrydt/httpie.nvim", config = function()
   require("httpie").setup()
 end }
 ```
@@ -47,7 +47,7 @@ Saved collections are `.http` files stored in `~/.local/share/nvim/httpie-nvim/`
 | `:HttpieNew [name]` | Create a new collection |
 | `:HttpieOpen` | Browse and open a saved collection |
 | `:HttpieSave` | Append the request at cursor to a collection |
-| `:HttpieRun` | Run the request at cursor (also `<CR>`) |
+| `:HttpieRun` | Run the request at cursor |
 
 ### Environments
 
@@ -60,7 +60,7 @@ Create an `httpie-env.json` file in your project root:
 }
 ```
 
-`{{VAR}}` placeholders in URLs, headers, and bodies are substituted from the active environment.
+`{{VAR}}` placeholders in URLs, headers, and bodies are substituted from the active environment. If a variable isn't defined there, it falls back to an OS environment variable of the same name — and values in `httpie-env.json` can themselves reference OS env vars (e.g. `"TOKEN": "{{OS_TOKEN}}"`), which is handy for keeping secrets out of the file.
 
 | Command | Action |
 |---|---|

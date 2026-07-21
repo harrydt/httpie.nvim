@@ -25,16 +25,37 @@ function M.get_active_name()
   return _active_env
 end
 
+-- Resolve a var: prefer the active environment's own value, falling back to
+-- an OS environment variable of the same name.
+local function resolve_var(vars, key)
+  if vars[key] ~= nil then return vars[key] end
+  return vim.env[key]
+end
+
 function M.get_active_vars()
   if not _active_env then return {} end
   local envs = M.load_envs()
-  return envs[_active_env] or {}
+  local vars = envs[_active_env] or {}
+
+  -- allow values in httpie-env.json to reference OS env vars, e.g.
+  -- "TOKEN": "{{OS_TOKEN}}"
+  local resolved = {}
+  for k, v in pairs(vars) do
+    if type(v) == "string" then
+      resolved[k] = (v:gsub("{{([%w_]+)}}", function(inner)
+        return resolve_var(vars, inner) or ("{{" .. inner .. "}}")
+      end))
+    else
+      resolved[k] = v
+    end
+  end
+  return resolved
 end
 
 function M.substitute_vars(str)
   local vars = M.get_active_vars()
   return (str:gsub("{{([%w_]+)}}", function(key)
-    return vars[key] or ("{{" .. key .. "}}")
+    return resolve_var(vars, key) or ("{{" .. key .. "}}")
   end))
 end
 
