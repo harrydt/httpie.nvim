@@ -59,6 +59,8 @@ Content-Type: application/json
 
 Supported: methods, URLs, headers (`Name:value`), JSON body fields (`key=value`, `key:=value` for raw JSON), query params (`key==value`), basic auth (`-a user:pass`), and form-encoded bodies (`-f`). Anything else (file uploads, sessions, etc.) is left as a `# NOTE:` comment instead of being silently dropped.
 
+Shell-style `$VAR` / `${VAR}` references left over from the pasted command (e.g. `Authorization:"Bearer $TOKEN"`) are converted to `{{VAR}}`, so they plug straight into [environments](#environments) instead of staying as dead text.
+
 ### Collections
 
 Saved collections are `.http` files stored in `~/.local/share/nvim/httpie-nvim/`.

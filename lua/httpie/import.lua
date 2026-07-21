@@ -59,6 +59,12 @@ local function is_file_item(token)
   return false
 end
 
+-- Convert shell-style $VAR / ${VAR} references (left over from a pasted
+-- command) into httpie.nvim's {{VAR}} template syntax.
+local function shell_vars_to_mustache(str)
+  return (str:gsub("%$%{([%w_]+)%}", "{{%1}}"):gsub("%$([%w_]+)", "{{%1}}"))
+end
+
 -- If the item is a header (key:value, not key:=value), return its lowercased key.
 local function header_key(token)
   local key, rest = token:match("^([^:=]+)(.*)$")
@@ -95,7 +101,16 @@ function M.parse(cmd_str)
 
   if #kept == 0 then return nil, "nothing left to convert" end
 
-  local scheme = cmd_str:match("(https?)://") or "http"
+  -- Pull scheme + host straight from the original text so a placeholder like
+  -- $HOST keeps its exact casing - httpie's own URL parser lowercases hosts.
+  local scheme, orig_host = "http", nil
+  for _, t in ipairs(tokens) do
+    local s, h = t:match("^(https?)://([^/%s]+)")
+    if s then
+      scheme, orig_host = s, h
+      break
+    end
+  end
 
   local cfg = require("httpie.config").opts
   local argv = { cfg.binary, "--ignore-stdin", "--offline", "--pretty=none", "--print=HB" }
@@ -118,21 +133,22 @@ function M.parse(cmd_str)
     if key then
       if key:lower() == "host" then host = value end
       if not AUTO_HEADERS[key:lower()] or explicit_headers[key:lower()] then
-        table.insert(headers, { key = key, value = value })
+        table.insert(headers, { key = key, value = shell_vars_to_mustache(value) })
       end
     end
     i = i + 1
   end
   if not host then return nil, "no Host header in httpie output" end
+  host = orig_host or host
 
   local body_lines = {}
   for j = i + 1, #lines do table.insert(body_lines, lines[j]) end
   while #body_lines > 0 and body_lines[#body_lines] == "" do table.remove(body_lines) end
-  local body = #body_lines > 0 and table.concat(body_lines, "\n") or nil
+  local body = #body_lines > 0 and shell_vars_to_mustache(table.concat(body_lines, "\n")) or nil
 
   return {
     method = method,
-    url = scheme .. "://" .. host .. path,
+    url = shell_vars_to_mustache(scheme .. "://" .. host .. path),
     headers = headers,
     body = body,
     unsupported = unsupported,
