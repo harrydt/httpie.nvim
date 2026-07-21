@@ -33,21 +33,13 @@ function M.setup(opts)
     require("httpie.storage").save_at_cursor()
   end, { desc = "Save request at cursor to a collection" })
 
-  cmd("HttpieEnvSelect", function()
-    require("httpie.env").select()
-  end, { desc = "Select active HTTPie environment" })
-
-  cmd("HttpieEnvEdit", function()
-    require("httpie.env").edit()
-  end, { desc = "Edit HTTPie environment file" })
-
-  cmd("HttpieEnvShow", function()
-    require("httpie.env").show()
-  end, { desc = "Show active HTTPie environment variables" })
-
   cmd("HttpieImport", function(a)
     require("httpie.import").replace_range(a.line1, a.line2)
   end, { range = true, desc = "Convert a pasted httpie command into .http format" })
+
+  cmd("HttpieExport", function()
+    require("httpie.import").export_at_cursor()
+  end, { desc = "Export the request at cursor as an httpie CLI command (copied to clipboard)" })
 end
 
 return M

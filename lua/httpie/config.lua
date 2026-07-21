@@ -4,7 +4,6 @@ M.opts = {}
 
 M.defaults = {
   storage_dir = vim.fn.stdpath("data") .. "/httpie-nvim",
-  env_file = "httpie-env.json",
   binary = "http",
   output = {
     split = "vertical", -- "vertical" | "horizontal" | "float"

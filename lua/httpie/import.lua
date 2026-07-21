@@ -65,6 +65,26 @@ local function shell_vars_to_mustache(str)
   return (str:gsub("%$%{([%w_]+)%}", "{{%1}}"):gsub("%$([%w_]+)", "{{%1}}"))
 end
 
+-- Convert httpie.nvim's {{VAR}} template syntax back to a shell-style $VAR
+-- reference, so exported commands never bake in a resolved secret value.
+local function mustache_to_shell_vars(str)
+  return (str:gsub("{{([%w_]+)}}", "$%1"))
+end
+
+-- Does this string need shell-quoting to survive as a single argument?
+local function needs_quote(s)
+  return s:find("[%s$\"'&|;<>%(%)%?#%*]") ~= nil
+end
+
+-- Double-quote a string for shell use, preserving $VAR expansion.
+local function dquote(s)
+  return '"' .. s:gsub('[\\"`]', "\\%0") .. '"'
+end
+
+local function shell_arg(s)
+  return needs_quote(s) and dquote(s) or s
+end
+
 -- If the item is a header (key:value, not key:=value), return its lowercased key.
 local function header_key(token)
   local key, rest = token:match("^([^:=]+)(.*)$")
@@ -170,6 +190,35 @@ function M.render(req)
     table.insert(lines, "# NOTE: could not convert: " .. table.concat(req.unsupported, " "))
   end
   return lines
+end
+
+-- Build an httpie CLI command string from a parsed .http request (as
+-- returned by httpie.request.at_cursor). {{VAR}} placeholders become $VAR so
+-- the command stays copy-pasteable without ever containing a resolved secret.
+function M.to_cli(req)
+  local parts = { "http", req.method, shell_arg(mustache_to_shell_vars(req.url)) }
+  for _, h in ipairs(req.headers) do
+    table.insert(parts, h.key .. ":" .. shell_arg(mustache_to_shell_vars(h.value)))
+  end
+  if req.body_lines and #req.body_lines > 0 then
+    local body = mustache_to_shell_vars(table.concat(req.body_lines, "\n"))
+    table.insert(parts, "--raw=" .. shell_arg(body))
+  end
+  return table.concat(parts, " ")
+end
+
+-- Export the request at cursor as an httpie CLI command, copied to the
+-- system clipboard.
+function M.export_at_cursor()
+  local req = require("httpie.request").at_cursor()
+  if not req.method then
+    vim.notify("httpie.nvim: no request found at cursor", vim.log.levels.WARN)
+    return
+  end
+
+  local cmd_str = M.to_cli(req)
+  vim.fn.setreg("+", cmd_str)
+  vim.notify("httpie.nvim: copied to clipboard:\n" .. cmd_str)
 end
 
 -- Replace a range of lines (e.g. a visual selection) containing a pasted
