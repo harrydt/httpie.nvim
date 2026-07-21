@@ -1,0 +1,32 @@
+### GET request
+GET {{BASE_URL}}/get
+Accept: application/json
+
+
+### POST JSON body
+POST {{BASE_URL}}/post
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "httpie.nvim",
+  "awesome": true
+}
+
+
+### POST form data (httpie item syntax)
+POST {{BASE_URL}}/post
+Content-Type: application/x-www-form-urlencoded
+
+name=httpie.nvim&awesome=true
+
+
+### Inspect request headers
+GET {{BASE_URL}}/headers
+Authorization: Bearer {{TOKEN}}
+X-Custom-Header: hello
+
+
+### Delete
+DELETE {{BASE_URL}}/delete
+Authorization: Bearer {{TOKEN}}

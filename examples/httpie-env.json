@@ -1,0 +1,10 @@
+{
+  "dev": {
+    "BASE_URL": "https://httpbin.org",
+    "TOKEN": "dev-secret-token"
+  },
+  "prod": {
+    "BASE_URL": "https://httpbin.org",
+    "TOKEN": "prod-secret-token"
+  }
+}
