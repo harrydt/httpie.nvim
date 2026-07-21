@@ -79,10 +79,14 @@ function M.at_cursor(bufnr)
 end
 
 -- Build the shell command string for a parsed request
-local function build_cmd(req, binary)
+local function build_cmd(req, binary, has_body)
   local env = require("httpie.env")
 
   local parts = { binary, "--pretty=format" }
+  if not has_body then
+    -- avoid blocking on nvim's job stdin pipe, which is never closed
+    table.insert(parts, "--ignore-stdin")
+  end
 
   table.insert(parts, req.method)
   table.insert(parts, vim.fn.shellescape(env.substitute_vars(req.url)))
@@ -106,8 +110,8 @@ function M.execute(req)
   local env = require("httpie.env")
   local ui = require("httpie.ui")
 
-  local parts = build_cmd(req, cfg.binary)
   local body = #req.body_lines > 0 and table.concat(req.body_lines, "\n") or nil
+  local parts = build_cmd(req, cfg.binary, body ~= nil)
 
   -- pipe body via stdin when present
   local cmd_str
