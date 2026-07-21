@@ -92,6 +92,10 @@ Create an `httpie-env.json` file in your project root:
 | `:HttpieEnvEdit` | Open `httpie-env.json` in the current directory |
 | `:HttpieEnvShow` | Print the active environment's variables |
 
+### Sensitive headers
+
+The command echoed at the top of the output window (`# $ http ...`) masks known sensitive header values as `***` — `Authorization`, `Cookie`, `Set-Cookie`, `X-Api-Key`, `X-Auth-Token`, and `Proxy-Authorization`. The actual request still sends the real, substituted value; only the echoed line is masked. This list isn't currently configurable, and request bodies aren't masked at all.
+
 ## Configuration
 
 ```lua
