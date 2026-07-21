@@ -2,6 +2,15 @@ local M = {}
 
 local HTTP_METHODS = { GET = true, POST = true, PUT = true, PATCH = true, DELETE = true, HEAD = true, OPTIONS = true }
 
+local SENSITIVE_HEADERS = {
+  authorization = true,
+  cookie = true,
+  ["set-cookie"] = true,
+  ["x-api-key"] = true,
+  ["x-auth-token"] = true,
+  ["proxy-authorization"] = true,
+}
+
 -- Parse a block of lines (one request) into a structured table
 function M.parse_block(lines)
   local req = { name = nil, method = nil, url = nil, headers = {}, body_lines = {} }
@@ -78,8 +87,10 @@ function M.at_cursor(bufnr)
   return M.parse_block(block)
 end
 
--- Build the shell command string for a parsed request
-local function build_cmd(req, binary, has_body)
+-- Build the shell command parts for a parsed request. When `mask` is set,
+-- sensitive header values are replaced with "***" - used for the command
+-- echoed into the output buffer, never for the command actually executed.
+local function build_cmd(req, binary, has_body, mask)
   local env = require("httpie.env")
 
   local parts = { binary, "--pretty=format" }
@@ -92,7 +103,7 @@ local function build_cmd(req, binary, has_body)
   table.insert(parts, vim.fn.shellescape(env.substitute_vars(req.url)))
 
   for _, h in ipairs(req.headers) do
-    local val = env.substitute_vars(h.value)
+    local val = (mask and SENSITIVE_HEADERS[h.key:lower()]) and "***" or env.substitute_vars(h.value)
     table.insert(parts, vim.fn.shellescape(h.key .. ":" .. val))
   end
 
@@ -112,14 +123,18 @@ function M.execute(req)
 
   local body = #req.body_lines > 0 and table.concat(req.body_lines, "\n") or nil
   local parts = build_cmd(req, cfg.binary, body ~= nil)
+  local display_parts = build_cmd(req, cfg.binary, body ~= nil, true)
 
   -- pipe body via stdin when present
-  local cmd_str
+  local cmd_str, display_cmd_str
   if body then
     body = env.substitute_vars(body)
-    cmd_str = "echo " .. vim.fn.shellescape(body) .. " | " .. table.concat(parts, " ")
+    local piped_body = "echo " .. vim.fn.shellescape(body) .. " | "
+    cmd_str = piped_body .. table.concat(parts, " ")
+    display_cmd_str = piped_body .. table.concat(display_parts, " ")
   else
     cmd_str = table.concat(parts, " ")
+    display_cmd_str = table.concat(display_parts, " ")
   end
 
   local bufnr = ui.open()
@@ -127,7 +142,7 @@ function M.execute(req)
   vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
     "# " .. label,
-    "# $ " .. cmd_str,
+    "# $ " .. display_cmd_str,
     "# Running...",
     "",
   })
@@ -147,7 +162,7 @@ function M.execute(req)
       vim.schedule(function()
         local out = {
           "# " .. label,
-          "# $ " .. cmd_str,
+          "# $ " .. display_cmd_str,
           "",
         }
         if code ~= 0 and #stderr_acc > 0 then
