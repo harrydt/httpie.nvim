@@ -38,6 +38,27 @@ Content-Type: application/json
 
 Run `:HttpieRun` on any request block to execute it. The response appears in a vertical split.
 
+### Importing httpie commands
+
+Paste an `http` CLI command (copied from your terminal) into a `.http` file, select it (visual mode), and run `:HttpieImport` to convert it into a request block in place:
+
+```
+http POST https://api.example.com/users Authorization:"Bearer abc123" name=Alice age:=30
+```
+
+becomes:
+
+```http
+###
+POST https://api.example.com/users
+Authorization: Bearer abc123
+Content-Type: application/json
+
+{"age": 30, "name": "Alice"}
+```
+
+Supported: methods, URLs, headers (`Name:value`), JSON body fields (`key=value`, `key:=value` for raw JSON), query params (`key==value`), basic auth (`-a user:pass`), and form-encoded bodies (`-f`). Anything else (file uploads, sessions, etc.) is left as a `# NOTE:` comment instead of being silently dropped.
+
 ### Collections
 
 Saved collections are `.http` files stored in `~/.local/share/nvim/httpie-nvim/`.
@@ -48,6 +69,7 @@ Saved collections are `.http` files stored in `~/.local/share/nvim/httpie-nvim/`
 | `:HttpieOpen` | Browse and open a saved collection |
 | `:HttpieSave` | Append the request at cursor to a collection |
 | `:HttpieRun` | Run the request at cursor |
+| `:HttpieImport` | Convert a selected httpie CLI command into a request block |
 
 ### Environments
 

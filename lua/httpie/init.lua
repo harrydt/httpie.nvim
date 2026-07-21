@@ -44,6 +44,10 @@ function M.setup(opts)
   cmd("HttpieEnvShow", function()
     require("httpie.env").show()
   end, { desc = "Show active HTTPie environment variables" })
+
+  cmd("HttpieImport", function(a)
+    require("httpie.import").replace_range(a.line1, a.line2)
+  end, { range = true, desc = "Convert a pasted httpie command into .http format" })
 end
 
 return M
