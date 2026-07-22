@@ -103,6 +103,28 @@ function M.parse(cmd_str)
   local tokens = shell_split(cmd_str)
   if #tokens == 0 then return nil, "empty command" end
 
+  -- `echo '<body>' | http ...` - pull out the piped body and feed it to
+  -- httpie via --raw instead of actually shelling out to a pipeline.
+  local piped_body = nil
+  if tokens[1] == "echo" then
+    local pipe_idx = nil
+    for idx, t in ipairs(tokens) do
+      if t == "|" then
+        pipe_idx = idx
+        break
+      end
+    end
+    if pipe_idx then
+      local body_parts = {}
+      for i = 2, pipe_idx - 1 do table.insert(body_parts, tokens[i]) end
+      piped_body = table.concat(body_parts, " ")
+      local rest = {}
+      for i = pipe_idx + 1, #tokens do table.insert(rest, tokens[i]) end
+      tokens = rest
+    end
+  end
+  if #tokens == 0 then return nil, "empty command" end
+
   if tokens[1]:match("/?https?$") then
     table.remove(tokens, 1)
   end
@@ -135,6 +157,9 @@ function M.parse(cmd_str)
   local cfg = require("httpie.config").opts
   local argv = { cfg.binary, "--ignore-stdin", "--offline", "--pretty=none", "--print=HB" }
   vim.list_extend(argv, kept)
+  if piped_body then
+    table.insert(argv, "--raw=" .. piped_body)
+  end
   local parts = {}
   for _, a in ipairs(argv) do table.insert(parts, vim.fn.shellescape(a)) end
   local output = vim.fn.system(table.concat(parts, " ") .. " 2>&1")
