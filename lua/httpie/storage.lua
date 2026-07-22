@@ -31,9 +31,17 @@ function M.list()
   end, paths)
 end
 
+-- Edit path in the current window, remembering the buffer we came from so
+-- :HttpieClose can return to it.
+local function open_and_track(path)
+  local prev_buf = vim.api.nvim_get_current_buf()
+  vim.cmd("edit " .. vim.fn.fnameescape(path))
+  vim.b.httpie_prev_buf = prev_buf
+end
+
 function M.open(name)
   local dir = storage_dir()
-  vim.cmd("edit " .. vim.fn.fnameescape(dir .. "/" .. name .. ".http"))
+  open_and_track(dir .. "/" .. name .. ".http")
 end
 
 function M.new(name)
@@ -44,7 +52,28 @@ function M.new(name)
   else
     vim.fn.writefile(vim.split(TEMPLATE, "\n"), path)
   end
-  vim.cmd("edit " .. vim.fn.fnameescape(path))
+  open_and_track(path)
+end
+
+-- Close the current .http buffer and return to whichever buffer was active
+-- before it was opened via :HttpieOpen / :HttpieNew.
+function M.close_current()
+  local bufnr = vim.api.nvim_get_current_buf()
+  if vim.bo[bufnr].filetype ~= "http" then
+    vim.notify("httpie.nvim: not an .http buffer", vim.log.levels.WARN)
+    return
+  end
+  if vim.bo[bufnr].modified then
+    vim.notify("httpie.nvim: unsaved changes - save first (:w) or force with :bd!", vim.log.levels.WARN)
+    return
+  end
+
+  local prev_buf = vim.b[bufnr].httpie_prev_buf
+  if prev_buf and vim.api.nvim_buf_is_valid(prev_buf) then
+    vim.api.nvim_win_set_buf(0, prev_buf)
+  end
+
+  vim.api.nvim_buf_delete(bufnr, { force = false })
 end
 
 -- Pick a collection interactively, or prompt to create one

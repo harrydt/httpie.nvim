@@ -33,6 +33,10 @@ function M.setup(opts)
     require("httpie.storage").save_at_cursor()
   end, { desc = "Save request at cursor to a collection" })
 
+  cmd("HttpieClose", function()
+    require("httpie.storage").close_current()
+  end, { desc = "Close the current .http buffer and return to the previous buffer" })
+
   cmd("HttpieImport", function(a)
     require("httpie.import").replace_range(a.line1, a.line2)
   end, { range = true, desc = "Convert a pasted httpie command into .http format" })

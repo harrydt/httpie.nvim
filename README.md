@@ -77,6 +77,9 @@ Saved collections are `.http` files stored in `~/.local/share/nvim/httpie-nvim/`
 | `:HttpieRun` | Run the request at cursor |
 | `:HttpieImport` | Convert a selected httpie CLI command into a request block |
 | `:HttpieExport` | Copy the request at cursor as an httpie CLI command |
+| `:HttpieClose` | Close the current `.http` buffer and return to where it was opened from |
+
+`:HttpieClose` refuses to close if the buffer has unsaved changes (save with `:w` first, or force with `:bd!`), and does nothing if the current buffer isn't an `.http` file.
 
 ### Sensitive headers
 
