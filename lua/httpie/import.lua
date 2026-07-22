@@ -81,8 +81,16 @@ local function dquote(s)
   return '"' .. s:gsub('[\\"`]', "\\%0") .. '"'
 end
 
+-- Single-quote a string for shell use. Nothing inside expands or needs
+-- escaping except a literal single quote itself.
+local function squote(s)
+  return "'" .. s:gsub("'", [['\'']]) .. "'"
+end
+
 local function shell_arg(s)
-  return needs_quote(s) and dquote(s) or s
+  if not needs_quote(s) then return s end
+  -- only pay for double-quote escaping when a $VAR actually needs to expand
+  return s:find("%$") and dquote(s) or squote(s)
 end
 
 -- If the item is a header (key:value, not key:=value), return its lowercased key.
