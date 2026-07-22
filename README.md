@@ -85,17 +85,37 @@ require("httpie").setup({
 
 ## FAQ
 
-* **What httpie syntax does `:HttpieImport` support?**
-Methods, URLs, headers (`Name:value`), JSON body fields (`key=value`, `key:=value` for raw JSON), query params (`key==value`), basic auth (`-a user:pass`), form-encoded bodies (`-f`), and piped bodies (`echo '{...}' | http POST ...`). Anything else (file uploads, sessions, etc.) is left as a `# NOTE:` comment instead of being silently dropped.
+**What httpie syntax does `:HttpieImport` support?**
 
-* **What happens to `$VAR` / `${VAR}` in an imported command?**
-They're converted to `{{VAR}}`, so a header like `Authorization:"Bearer $TOKEN"` resolves from your OS environment instead of staying as dead text.
+- Methods and URLs
+- Headers (`Name:value`)
+- JSON body fields (`key=value`, `key:=value` for raw JSON)
+- Query params (`key==value`)
+- Basic auth (`-a user:pass`)
+- Form-encoded bodies (`-f`)
+- Piped bodies (`echo '{...}' | http POST ...`)
+- Anything else (file uploads, sessions, etc.) is left as a `# NOTE:` comment instead of being silently dropped
 
-* **What does `:HttpieExport` produce, exactly?**
-`{{VAR}}` placeholders are converted back to `$VAR`, so the exported command never contains a resolved secret — the value is only filled in by your shell when you run it. If the request has a body, it's exported as `echo '{...}' | http POST ...`. A plain `Content-Type: application/json` header is omitted, since httpie sets that automatically whenever a body is present; any other `Content-Type` is kept.
+**What happens to `$VAR` / `${VAR}` in an imported command?**
 
-* **Are secrets ever shown in the output window?**
-The command echoed at the top of the output window (`# $ http ...`) masks known sensitive header values as `***` — `Authorization`, `Cookie`, `Set-Cookie`, `X-Api-Key`, `X-Auth-Token`, and `Proxy-Authorization`. The actual request still sends the real, substituted value; only the echoed line is masked. This list isn't currently configurable, and request bodies aren't masked at all.
+- They're converted to `{{VAR}}`
+- A header like `Authorization:"Bearer $TOKEN"` resolves from your OS environment instead of staying as dead text
 
-* **What does `:HttpieClose` do if I have unsaved changes?**
-It refuses to close (save with `:w` first, or force with `:bd!`). It also does nothing if the current buffer isn't an `.http` file.
+**What does `:HttpieExport` produce, exactly?**
+
+- `{{VAR}}` placeholders are converted back to `$VAR`, so the exported command never contains a resolved secret — the value is only filled in by your shell when you run it
+- If the request has a body, it's exported as `echo '{...}' | http POST ...`
+- A plain `Content-Type: application/json` header is omitted, since httpie sets that automatically whenever a body is present
+- Any other `Content-Type` is kept
+
+**Are secrets ever shown in the output window?**
+
+- The command echoed at the top of the output window (`# $ http ...`) masks known sensitive header values as `***` — `Authorization`, `Cookie`, `Set-Cookie`, `X-Api-Key`, `X-Auth-Token`, and `Proxy-Authorization`
+- The actual request still sends the real, substituted value; only the echoed line is masked
+- This list isn't currently configurable
+- Request bodies aren't masked at all
+
+**What does `:HttpieClose` do if I have unsaved changes?**
+
+- It refuses to close (save with `:w` first, or force with `:bd!`)
+- It also does nothing if the current buffer isn't an `.http` file
