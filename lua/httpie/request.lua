@@ -110,6 +110,17 @@ local function build_cmd(req, binary, has_body, mask)
   return parts
 end
 
+-- Render the echoed command as buffer lines. A multi-line piped body means
+-- cmd_str itself contains real newlines, which nvim_buf_set_lines rejects
+-- inside a single line - split it across several "#"-prefixed comment lines.
+local function echo_lines(label, cmd_str)
+  local lines = { "# " .. label }
+  for i, line in ipairs(vim.split(cmd_str, "\n", { plain = true })) do
+    table.insert(lines, (i == 1 and "# $ " or "# ") .. line)
+  end
+  return lines
+end
+
 -- Execute a parsed request, rendering output to the UI
 function M.execute(req)
   if not req.method then
@@ -140,12 +151,10 @@ function M.execute(req)
   local bufnr = ui.open()
   local label = req.name or (req.method .. " " .. req.url)
   vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
-  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
-    "# " .. label,
-    "# $ " .. display_cmd_str,
-    "# Running...",
-    "",
-  })
+  local initial = echo_lines(label, display_cmd_str)
+  table.insert(initial, "# Running...")
+  table.insert(initial, "")
+  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, initial)
 
   local stdout_acc, stderr_acc = {}, {}
 
@@ -160,11 +169,8 @@ function M.execute(req)
     end,
     on_exit = function(_, code)
       vim.schedule(function()
-        local out = {
-          "# " .. label,
-          "# $ " .. display_cmd_str,
-          "",
-        }
+        local out = echo_lines(label, display_cmd_str)
+        table.insert(out, "")
         if code ~= 0 and #stderr_acc > 0 then
           table.insert(out, "## Error (exit " .. code .. ")")
           table.insert(out, "")
