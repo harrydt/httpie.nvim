@@ -63,7 +63,7 @@ Supported: methods, URLs, headers (`Name:value`), JSON body fields (`key=value`,
 
 Shell-style `$VAR` / `${VAR}` references left over from the pasted command (e.g. `Authorization:"Bearer $TOKEN"`) are converted to `{{VAR}}`, so they resolve from your OS environment instead of staying as dead text.
 
-Run `:HttpieExport` on a request block to go the other way: it builds the equivalent `http` CLI command and copies it to your system clipboard, ready to paste into a terminal. `{{VAR}}` placeholders are converted back to `$VAR`, so the command never contains a resolved secret — the value is only filled in by your shell when you actually run it.
+Run `:HttpieExport` on a request block to go the other way: it builds the equivalent `http` CLI command and copies it to your system clipboard, ready to paste into a terminal. `{{VAR}}` placeholders are converted back to `$VAR`, so the command never contains a resolved secret — the value is only filled in by your shell when you actually run it. If the request has a body, it's exported as `echo '{...}' | http POST ...` to match the common convention (and mirrors what `:HttpieImport` accepts). A plain `Content-Type: application/json` header is omitted from the export, since httpie sets that automatically whenever a body is present — any other Content-Type is kept.
 
 ### Collections
 

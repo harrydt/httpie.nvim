@@ -221,15 +221,24 @@ end
 -- returned by httpie.request.at_cursor). {{VAR}} placeholders become $VAR so
 -- the command stays copy-pasteable without ever containing a resolved secret.
 function M.to_cli(req)
+  local has_body = req.body_lines and #req.body_lines > 0
+
   local parts = { "http", req.method, shell_arg(mustache_to_shell_vars(req.url)) }
   for _, h in ipairs(req.headers) do
-    table.insert(parts, h.key .. ":" .. shell_arg(mustache_to_shell_vars(h.value)))
+    -- httpie sets this automatically whenever a body is present, no need to say it twice
+    local is_default_json_content_type = has_body and h.key:lower() == "content-type" and h.value:lower() == "application/json"
+    if not is_default_json_content_type then
+      table.insert(parts, h.key .. ":" .. shell_arg(mustache_to_shell_vars(h.value)))
+    end
   end
-  if req.body_lines and #req.body_lines > 0 then
+  local cmd = table.concat(parts, " ")
+
+  if has_body then
     local body = mustache_to_shell_vars(table.concat(req.body_lines, "\n"))
-    table.insert(parts, "--raw=" .. shell_arg(body))
+    cmd = "echo " .. shell_arg(body) .. " | " .. cmd
   end
-  return table.concat(parts, " ")
+
+  return cmd
 end
 
 -- Export the request at cursor as an httpie CLI command, copied to the
