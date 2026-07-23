@@ -1,5 +1,12 @@
 local M = {}
 
+---@class httpie.ParsedCliRequest
+---@field method string
+---@field url string
+---@field headers httpie.Header[]
+---@field body string|nil
+---@field unsupported string[]
+
 -- httpie's own auto-added headers when none of these are explicitly set by the user
 local AUTO_HEADERS = {
   ["accept-encoding"] = true,
@@ -11,6 +18,8 @@ local AUTO_HEADERS = {
 }
 
 -- Split a command string into shell-like words, respecting quotes and backslash escapes.
+---@param str string
+---@return string[]
 local function shell_split(str)
   local tokens = {}
   local i, n = 1, #str
@@ -53,6 +62,8 @@ end
 
 -- httpie item syntax that reads a local file (key@file, key=@file, key:=@file) -
 -- httpie itself would try to open that file and fail if it doesn't exist here.
+---@param token string
+---@return boolean
 local function is_file_item(token)
   if token:match("^[^:=]+:=@") or token:match("^[^:=]+=@") then return true end
   if not token:find("[:=]") and token:find("@") then return true end
@@ -61,32 +72,44 @@ end
 
 -- Convert shell-style $VAR / ${VAR} references (left over from a pasted
 -- command) into httpie.nvim's {{VAR}} template syntax.
+---@param str string
+---@return string
 local function shell_vars_to_mustache(str)
   return (str:gsub("%$%{([%w_]+)%}", "{{%1}}"):gsub("%$([%w_]+)", "{{%1}}"))
 end
 
 -- Convert httpie.nvim's {{VAR}} template syntax back to a shell-style $VAR
 -- reference, so exported commands never bake in a resolved secret value.
+---@param str string
+---@return string
 local function mustache_to_shell_vars(str)
   return (str:gsub("{{([%w_]+)}}", "$%1"))
 end
 
 -- Does this string need shell-quoting to survive as a single argument?
+---@param s string
+---@return boolean
 local function needs_quote(s)
   return s:find("[%s$\"'&|;<>%(%)%?#%*]") ~= nil
 end
 
 -- Double-quote a string for shell use, preserving $VAR expansion.
+---@param s string
+---@return string
 local function dquote(s)
   return '"' .. s:gsub('[\\"`]', "\\%0") .. '"'
 end
 
 -- Single-quote a string for shell use. Nothing inside expands or needs
 -- escaping except a literal single quote itself.
+---@param s string
+---@return string
 local function squote(s)
   return "'" .. s:gsub("'", [['\'']]) .. "'"
 end
 
+---@param s string
+---@return string
 local function shell_arg(s)
   if not needs_quote(s) then return s end
   -- only pay for double-quote escaping when a $VAR actually needs to expand
@@ -94,6 +117,8 @@ local function shell_arg(s)
 end
 
 -- If the item is a header (key:value, not key:=value), return its lowercased key.
+---@param token string
+---@return string|nil
 local function header_key(token)
   local key, rest = token:match("^([^:=]+)(.*)$")
   if key and rest:sub(1, 1) == ":" and rest:sub(1, 2) ~= ":=" then
@@ -106,6 +131,8 @@ end
 -- Delegates the actual item-syntax parsing (auth, JSON/form bodies, query
 -- params) to the real `http` binary via --offline, which builds but doesn't
 -- send the request.
+---@param cmd_str string
+---@return httpie.ParsedCliRequest|nil, string|nil error
 function M.parse(cmd_str)
   cmd_str = cmd_str:gsub("^%s*%$%s+", "")
   local tokens = shell_split(cmd_str)
@@ -209,6 +236,8 @@ function M.parse(cmd_str)
 end
 
 -- Render a parsed request into .http block lines.
+---@param req httpie.ParsedCliRequest
+---@return string[]
 function M.render(req)
   local lines = { "###", req.method .. " " .. req.url }
   for _, h in ipairs(req.headers) do
@@ -228,6 +257,8 @@ end
 -- Build an httpie CLI command string from a parsed .http request (as
 -- returned by httpie.request.at_cursor). {{VAR}} placeholders become $VAR so
 -- the command stays copy-pasteable without ever containing a resolved secret.
+---@param req httpie.Request
+---@return string
 function M.to_cli(req)
   local has_body = req.body_lines and #req.body_lines > 0
 
@@ -251,6 +282,7 @@ end
 
 -- Export the request at cursor as an httpie CLI command, copied to the
 -- system clipboard.
+---@return nil
 function M.export_at_cursor()
   local req = require("httpie.request").at_cursor()
   if not req.method then
@@ -265,6 +297,9 @@ end
 
 -- Replace a range of lines (e.g. a visual selection) containing a pasted
 -- httpie command with the equivalent .http block.
+---@param line1 integer
+---@param line2 integer
+---@return nil
 function M.replace_range(line1, line2)
   local bufnr = vim.api.nvim_get_current_buf()
   local raw_lines = vim.api.nvim_buf_get_lines(bufnr, line1 - 1, line2, false)

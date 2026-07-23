@@ -1,5 +1,6 @@
 local M = {}
 
+---@param opts httpie.Config|nil
 function M.setup(opts)
   local cfg = require("httpie.config")
   cfg.setup(opts)

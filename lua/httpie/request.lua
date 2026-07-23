@@ -1,5 +1,16 @@
 local M = {}
 
+---@class httpie.Header
+---@field key string
+---@field value string
+
+---@class httpie.Request
+---@field name string|nil
+---@field method string|nil
+---@field url string|nil
+---@field headers httpie.Header[]
+---@field body_lines string[]
+
 local HTTP_METHODS = { GET = true, POST = true, PUT = true, PATCH = true, DELETE = true, HEAD = true, OPTIONS = true }
 
 local SENSITIVE_HEADERS = {
@@ -12,6 +23,8 @@ local SENSITIVE_HEADERS = {
 }
 
 -- Parse a block of lines (one request) into a structured table
+---@param lines string[]
+---@return httpie.Request
 function M.parse_block(lines)
   local req = { name = nil, method = nil, url = nil, headers = {}, body_lines = {} }
   local state = "meta"
@@ -58,11 +71,18 @@ function M.parse_block(lines)
 end
 
 -- Locate the request block around the cursor and parse it
+---@param bufnr integer|nil
+---@return httpie.Request
 function M.at_cursor(bufnr)
   bufnr = bufnr or 0
+  -- re-read and re-scan the whole buffer on every call; .http files are small
+  -- enough that this is simpler than maintaining incremental state
   local all = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  -- all[] is 1-indexed (Lua), but cursor math below is 0-indexed to match
+  -- nvim_buf_get_lines' line-number convention, hence the all[i + 1] lookups
   local cur = vim.api.nvim_win_get_cursor(0)[1] - 1 -- 0-indexed
 
+  -- scan backward from the cursor for the "###" header starting this block
   local block_start = 0
   for i = cur, 0, -1 do
     if all[i + 1] and all[i + 1]:match("^###") then
@@ -71,6 +91,7 @@ function M.at_cursor(bufnr)
     end
   end
 
+  -- scan forward for the next "###" header, marking where this block ends
   local block_end = #all
   for i = cur + 1, #all - 1 do
     if all[i + 1] and all[i + 1]:match("^###") then
@@ -90,6 +111,11 @@ end
 -- Build the shell command parts for a parsed request. When `mask` is set,
 -- sensitive header values are replaced with "***" - used for the command
 -- echoed into the output buffer, never for the command actually executed.
+---@param req httpie.Request
+---@param binary string
+---@param has_body boolean
+---@param mask boolean|nil
+---@return string[]
 local function build_cmd(req, binary, has_body, mask)
   local env = require("httpie.env")
 
@@ -113,6 +139,9 @@ end
 -- Render the echoed command as buffer lines. A multi-line piped body means
 -- cmd_str itself contains real newlines, which nvim_buf_set_lines rejects
 -- inside a single line - split it across several "#"-prefixed comment lines.
+---@param label string
+---@param cmd_str string
+---@return string[]
 local function echo_lines(label, cmd_str)
   local lines = { "# " .. label }
   for i, line in ipairs(vim.split(cmd_str, "\n", { plain = true })) do
@@ -122,6 +151,7 @@ local function echo_lines(label, cmd_str)
 end
 
 -- Execute a parsed request, rendering output to the UI
+---@param req httpie.Request
 function M.execute(req)
   if not req.method then
     vim.notify("httpie.nvim: no request found at cursor", vim.log.levels.WARN)

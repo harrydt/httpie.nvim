@@ -1,5 +1,9 @@
 local M = {}
 
+---@class httpie.Collection
+---@field name string
+---@field path string
+
 local TEMPLATE = [[
 ### Example GET
 # Replace with your request details
@@ -14,6 +18,7 @@ Content-Type: application/json
 {"key": "value"}
 ]]
 
+---@return string
 local function storage_dir()
   local cfg = require("httpie.config").opts
   local dir = cfg.storage_dir
@@ -23,6 +28,7 @@ local function storage_dir()
   return dir
 end
 
+---@return httpie.Collection[]
 function M.list()
   local dir = storage_dir()
   local paths = vim.fn.glob(dir .. "/*.http", false, true)
@@ -33,17 +39,20 @@ end
 
 -- Edit path in the current window, remembering the buffer we came from so
 -- :HttpieClose can return to it.
+---@param path string
 local function open_and_track(path)
   local prev_buf = vim.api.nvim_get_current_buf()
   vim.cmd("edit " .. vim.fn.fnameescape(path))
   vim.b.httpie_prev_buf = prev_buf
 end
 
+---@param name string
 function M.open(name)
   local dir = storage_dir()
   open_and_track(dir .. "/" .. name .. ".http")
 end
 
+---@param name string
 function M.new(name)
   local dir = storage_dir()
   local path = dir .. "/" .. name .. ".http"
@@ -57,6 +66,7 @@ end
 
 -- Close the current .http buffer and return to whichever buffer was active
 -- before it was opened via :HttpieOpen / :HttpieNew.
+---@return nil
 function M.close_current()
   local bufnr = vim.api.nvim_get_current_buf()
   if vim.bo[bufnr].filetype ~= "http" then
@@ -77,6 +87,7 @@ function M.close_current()
 end
 
 -- Pick a collection interactively, or prompt to create one
+---@return nil
 function M.pick()
   local collections = M.list()
   local items = vim.tbl_map(function(c) return c.name end, collections)
@@ -95,6 +106,7 @@ function M.pick()
 end
 
 -- Append the request block around the cursor to a chosen collection
+---@return nil
 function M.save_at_cursor()
   local request = require("httpie.request")
   local bufnr = vim.api.nvim_get_current_buf()

@@ -1,7 +1,10 @@
 local M = {}
 
+---@type { bufnr: integer|nil, winid: integer|nil }
 local state = { bufnr = nil, winid = nil }
 
+---@param bufnr integer
+---@return integer winid
 local function open_float(bufnr)
   local width = math.max(80, math.floor(vim.o.columns * 0.75))
   local height = math.max(20, math.floor(vim.o.lines * 0.75))
@@ -19,6 +22,7 @@ local function open_float(bufnr)
   })
 end
 
+---@return integer bufnr
 function M.open()
   local cfg = require("httpie.config").opts.output
   local split = cfg.split or "vertical"
@@ -51,6 +55,7 @@ function M.open()
   return state.bufnr
 end
 
+---@return nil
 function M.close()
   if state.winid and vim.api.nvim_win_is_valid(state.winid) then
     vim.api.nvim_win_close(state.winid, true)
@@ -58,6 +63,8 @@ function M.close()
   end
 end
 
+---@param lines string[]
+---@return nil
 function M.write(lines)
   if not (state.bufnr and vim.api.nvim_buf_is_valid(state.bufnr)) then return end
   vim.api.nvim_buf_set_option(state.bufnr, "modifiable", true)
