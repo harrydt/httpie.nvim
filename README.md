@@ -37,7 +37,16 @@ Content-Type: application/json
 {"name": "Alice", "email": "alice@example.com"}
 ```
 
-`{{VAR}}` placeholders are substituted from OS environment variables (`export BASE_URL=...`).
+`{{VAR}}` placeholders are substituted from OS environment variables (`export BASE_URL=...`), falling back to in-file variables declared as `@VAR = value` anywhere in the file if no environment variable of that name is set:
+
+```http
+@BASE_URL = https://api.example.com
+@TOKEN = supersecret
+
+### Get users
+GET {{BASE_URL}}/users
+Authorization: Bearer {{TOKEN}}
+```
 
 | Command | Action |
 |---|---|

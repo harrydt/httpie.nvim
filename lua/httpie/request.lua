@@ -10,6 +10,7 @@ local M = {}
 ---@field url string|nil
 ---@field headers httpie.Header[]
 ---@field body_lines string[]
+---@field vars table<string, string>|nil
 
 local HTTP_METHODS = { GET = true, POST = true, PUT = true, PATCH = true, DELETE = true, HEAD = true, OPTIONS = true }
 
@@ -34,6 +35,8 @@ function M.parse_block(lines)
       local sep_name = line:match("^###%s*(.*)")
       if sep_name then
         req.name = vim.trim(sep_name) ~= "" and vim.trim(sep_name) or nil
+      elseif line:match("^@[%w_]+%s*=") then
+        -- in-file variable declaration, e.g. @host = https://example.com, skip
       elseif not line:match("^#") and not line:match("^%s*$") then
         state = "first_line"
       end
@@ -51,6 +54,8 @@ function M.parse_block(lines)
         state = "body"
       elseif line:match("^#") then
         -- comment inside request block, skip
+      elseif line:match("^@[%w_]+%s*=") then
+        -- in-file variable declaration, skip
       else
         local key, value = line:match("^([^:]+):%s*(.+)")
         if key then
@@ -105,7 +110,9 @@ function M.at_cursor(bufnr)
     table.insert(block, all[i + 1])
   end
 
-  return M.parse_block(block)
+  local req = M.parse_block(block)
+  req.vars = require("httpie.env").parse_file_vars(all)
+  return req
 end
 
 -- Build the shell command parts for a parsed request. When `mask` is set,
@@ -126,10 +133,10 @@ local function build_cmd(req, binary, has_body, mask)
   end
 
   table.insert(parts, req.method)
-  table.insert(parts, vim.fn.shellescape(env.substitute_vars(req.url)))
+  table.insert(parts, vim.fn.shellescape(env.substitute_vars(req.url, req.vars)))
 
   for _, h in ipairs(req.headers) do
-    local val = (mask and SENSITIVE_HEADERS[h.key:lower()]) and "***" or env.substitute_vars(h.value)
+    local val = (mask and SENSITIVE_HEADERS[h.key:lower()]) and "***" or env.substitute_vars(h.value, req.vars)
     table.insert(parts, vim.fn.shellescape(h.key .. ":" .. val))
   end
 
@@ -169,7 +176,7 @@ function M.execute(req)
   -- pipe body via stdin when present
   local cmd_str, display_cmd_str
   if body then
-    body = env.substitute_vars(body)
+    body = env.substitute_vars(body, req.vars)
     local piped_body = "echo " .. vim.fn.shellescape(body) .. " | "
     cmd_str = piped_body .. table.concat(parts, " ")
     display_cmd_str = piped_body .. table.concat(display_parts, " ")
