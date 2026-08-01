@@ -85,6 +85,7 @@ Content-Type: application/json
 require("httpie").setup({
   binary    = "http",                              -- path to httpie binary
   storage_dir = vim.fn.stdpath("data") .. "/httpie-nvim", -- where collections live
+  print = "hb",                                    -- httpie's --print flag, e.g. "b" for body only
   output = {
     split = "vertical",  -- "vertical" | "horizontal" | "float"
     size  = 80,

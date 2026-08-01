@@ -125,8 +125,9 @@ end
 ---@return string[]
 local function build_cmd(req, binary, has_body, mask)
   local env = require("httpie.env")
+  local cfg = require("httpie.config").opts
 
-  local parts = { binary, "--pretty=format" }
+  local parts = { binary, "--pretty=format", "--print=" .. cfg.print }
   if not has_body then
     -- avoid blocking on nvim's job stdin pipe, which is never closed
     table.insert(parts, "--ignore-stdin")

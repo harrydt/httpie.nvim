@@ -7,6 +7,7 @@ local M = {}
 ---@class httpie.Config
 ---@field storage_dir string
 ---@field binary string
+---@field print string
 ---@field output httpie.OutputConfig
 
 ---@type httpie.Config
@@ -16,6 +17,7 @@ M.opts = {}
 M.defaults = {
   storage_dir = vim.fn.stdpath("data") .. "/httpie-nvim",
   binary = "http",
+  print = "hb", -- passed to httpie's --print flag, e.g. "hb" for headers+body
   output = {
     split = "vertical", -- "vertical" | "horizontal" | "float"
     size = 80,
